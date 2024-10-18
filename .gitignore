@@ -1,5 +1,3 @@
-﻿AntiCorruptionDemo/.idea
-AntiCorruptionDemo/Dependency/bin
-AntiCorruptionDemo/ConsoleApp/bin
-AntiCorruptionDemo/ConsoleApp/obj
-AntiCorruptionDemo/Dependency/obj
+﻿*/.idea/
+*/*/obj/
+*/*/bin/
