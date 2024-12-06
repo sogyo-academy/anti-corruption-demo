@@ -1,55 +1,71 @@
 ﻿namespace Dependency
 
 open System
+open FSharpPlus
 
 module Internals =
     
-    type Product (identifier: Guid, quantity: uint)  =
+    type PriceList (prices: Map<Guid, float>) =
+        member this.prices = prices
+        member this.ForProduct(identifier: Guid) : Option<float> =
+            this.prices.TryFind identifier
+            
+    
+    type ProductQuantity (identifier: Guid, quantity: uint)  =
         member this.identifier = identifier
         member this.quantity = quantity
-                
-        interface IComparable with
-            member this.CompareTo other =
-                match other with
-                | null -> 1
-                | :? Product as other -> other.identifier |> this.identifier.CompareTo
-                | _ -> invalidArg "other" "not a Product"
-        
-        member this.AddQuantity (quantity: uint) =
-            Product(this.identifier, this.quantity + quantity)
-
-        override this.Equals(other) =
-            match other with
-            | :? Product as other -> other.identifier = this.identifier && other.quantity = this.quantity
-            | _ -> false
-        
+        member this.PriceGiven(prices: PriceList) : Option<float>=
+            match prices.ForProduct(this.identifier) with
+            | None -> None
+            | Some price -> Some (price * float(this.quantity))  
     
-    type Order (products: Set<Product>) =
+    type Order (products: Map<Guid, ProductQuantity>) =
         member this.products = products
         
-        member this.AddProduct(product: Product) =
-             if this.products |> Set.exists (fun x -> x.identifier = product.identifier) then
-                 this.AddQuantityTo(product.identifier, product.quantity)
-             else
-                 Order(this.products |> Set.add product)
-                 
-        member this.RemoveProduct(id: Guid) =
+        member this.GetProduct(id: Guid): Option<ProductQuantity> =
+            // Set.toList this.products |> List.tryFind (fun p -> p.identifier = id)
+            this.products.TryFind id 
+            
+        member private this.RemoveProduct(id: Guid) : Order =
             Order(
-                Set.filter (fun x -> not (x.identifier = id)) this.products
+                this.products.Remove id
             )
         
-        member this.AddQuantityTo(id: Guid, quantity: uint) =
+        member private this.AddProduct(product: ProductQuantity) : Order =
+            Order(
+                this.products.Add (product.identifier, product)
+            )
+            
+        member private this.IncreaseQuantityOfPreExistingProduct(preExistingProduct: ProductQuantity, quantity: uint) : Order =
             let newProduct =
-                match this.GetProduct(id) with
-                | Some product -> product.AddQuantity(quantity)
-                | None -> Product(id, quantity)
-            this.RemoveProduct(id).AddProduct(newProduct)            
+                ProductQuantity(
+                    preExistingProduct.identifier, preExistingProduct.quantity + quantity
+                )
+            this.RemoveProduct(preExistingProduct.identifier).AddProduct(newProduct)
+             
+        member private this.LowerQuantityOfPreExistingProduct(preExistingProduct: ProductQuantity, quantity: uint) : Order =
+            if preExistingProduct.quantity > quantity then
+                let newProduct =
+                    ProductQuantity(
+                        preExistingProduct.identifier, preExistingProduct.quantity - quantity
+                    )
+                this.RemoveProduct(preExistingProduct.identifier).AddProduct(newProduct)
+            else
+                this.RemoveProduct(preExistingProduct.identifier)
             
-        member this.Price =
-            this.products |> Seq.sumBy(fun product -> 1.0 * float(product.quantity))
-            // todo: get price of product from somewhere
+        member this.AddToOrder(product: ProductQuantity) : Order =
+             match this.GetProduct(product.identifier) with
+             | Some preExistingProduct -> this.IncreaseQuantityOfPreExistingProduct(preExistingProduct, product.quantity)
+             | None -> this.AddProduct(product)
+             
+        member this.RemoveFromOrder(product: ProductQuantity) : Order =
+            match this.GetProduct(product.identifier) with
+            | Some preExistingProduct -> this.LowerQuantityOfPreExistingProduct(preExistingProduct, product.quantity)
+            | None -> this         
             
-            
-        member this.GetProduct(id: Guid): Option<Product> =
-            Seq.toList this.products |> List.tryFind (fun p -> p.identifier = id)
-         
+        member this.Price(prices: PriceList) : Result<float, string> =
+            let henk(product: ProductQuantity) : Option<float> = product.PriceGiven(prices)
+            let productPrices = traverse henk this.products.Values
+            match productPrices with
+            | Some productPrices -> Ok (Seq.sum productPrices)
+            | _ -> Error "Price-list not exhaustive. Encountered product without price."
