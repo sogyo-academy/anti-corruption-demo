@@ -4,7 +4,6 @@ open System
 open FSharpPlus
 
 module Internals =
-    
     type PriceList (prices: Map<Guid, float>) =
         member this.prices = prices
         member this.ForProduct(identifier: Guid) : Option<float> =
@@ -23,7 +22,6 @@ module Internals =
         member this.products = products
         
         member this.GetProduct(id: Guid): Option<ProductQuantity> =
-            // Set.toList this.products |> List.tryFind (fun p -> p.identifier = id)
             this.products.TryFind id 
             
         member private this.RemoveProduct(id: Guid) : Order =
@@ -63,7 +61,7 @@ module Internals =
             | Some preExistingProduct -> this.LowerQuantityOfPreExistingProduct(preExistingProduct, product.quantity)
             | None -> this         
             
-        member this.Price(prices: PriceList) : Result<float, string> =
+        member this.TotalPrice(prices: PriceList) : Result<float, string> =
             let henk(product: ProductQuantity) : Option<float> = product.PriceGiven(prices)
             let productPrices = traverse henk this.products.Values
             match productPrices with

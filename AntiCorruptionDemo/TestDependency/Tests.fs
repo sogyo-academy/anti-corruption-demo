@@ -30,14 +30,14 @@ let ``By default, no discount is applied to an order`` () =
     let expected =
         Seq.sum [ for product in order.products.Values -> float product.quantity ]
 
-    Assert.Equal(Ok expected, order.Price(TestPriceList))
+    Assert.Equal(Ok expected, order.TotalPrice(TestPriceList))
 
 [<Fact>]
 let ``An order with an extra product has a higher price`` () =
     let order = TestOrderWithTwoProducts
     let product: ProductQuantity = ProductQuantity(Guid(), uint 1)
     let biggerOrder = order.AddToOrder(product)
-    Assert.True(order.Price(TestPriceList) < biggerOrder.Price(TestPriceList))
+    Assert.True(order.TotalPrice(TestPriceList) < biggerOrder.TotalPrice(TestPriceList))
 
 [<Fact>]
 let ``Removing a product from the order decreases the price`` () =
@@ -46,7 +46,7 @@ let ``Removing a product from the order decreases the price`` () =
     let smallerOrder =
         order.RemoveFromOrder(ProductQuantity(Guid("8704d51a-489d-4cb4-b29d-dd60eb1200fe"), uint 2))
 
-    Assert.True(order.Price(TestPriceList) > smallerOrder.Price(TestPriceList))
+    Assert.True(order.TotalPrice(TestPriceList) > smallerOrder.TotalPrice(TestPriceList))
 
 [<Fact>]
 let ``Adding a product to an order that already has that product increases its amount`` () =
