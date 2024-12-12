@@ -62,8 +62,8 @@ module Internals =
             | None -> this         
             
         member this.TotalPrice(prices: PriceList) : Result<float, string> =
-            let henk(product: ProductQuantity) : Option<float> = product.PriceGiven(prices)
-            let productPrices = traverse henk this.products.Values
+            let calculatePrice(product: ProductQuantity) : Option<float> = product.PriceGiven(prices)
+            let productPrices = traverse calculatePrice this.products.Values
             match productPrices with
             | Some productPrices -> Ok (Seq.sum productPrices)
             | _ -> Error "Price-list not exhaustive. Encountered product without price."
